@@ -3,7 +3,7 @@
 
 #define LOCK_FILENAME "/tmp/lock-x11-thomas"
 
-static char *const lockcmd[] = { "/usr/bin/slock" };
-static char *const sleepcmd[] = { "/usr/sbin/systemctl", "suspend" };
+static char *const lockcmd[] = { "/usr/bin/slock", NULL };
+static char *const sleepcmd[] = { "/usr/sbin/systemctl", "suspend", NULL };
 
 #endif // CONFIG_H
