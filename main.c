@@ -14,11 +14,6 @@
 
 #define DEFAULT_INACTIVITY      "10m"
 
-enum laptop_state_e {
-    OPEN,
-    CLOSED,
-};
-
 bool parse_time(const char *str, unsigned long *msecs);
 
 int main(int argc, char *const argv[], char *const envp[]) {
@@ -42,10 +37,10 @@ int main(int argc, char *const argv[], char *const envp[]) {
         CHK_FALSE(XScreenSaverQueryInfo(dpy, DefaultRootWindow(dpy), info));
         debug("info->idle = %lu", info->idle);
         if ( info->idle >= max_inactivity ) {
-            CHK_NEG(spawn(sleepcmd, envp));
             CHK_NEG(spawn(lockcmd, envp));
+            CHK_NEG(spawn(sleepcmd, envp));
         } else {
-            debug("info->idle = %lu, state = %s", info->idle, state == CLOSED ? "closed" : "open" );
+            debug("info->idle = %lu", info->idle);
             CHK_NEG(usleep(1000000UL));
         }
     }
@@ -93,28 +88,3 @@ bool parse_time(const char *str, unsigned long *msecs) {
     *msecs = _msecs;
     return true;
 }
-
-#if 0
-bool get_laptop_state(enum laptop_state_e *state) {
-    FILE *f = NULL;
-    char str_state[256];
-
-    CHK_NULL(f = fopen("/proc/acpi/button/lid/LID0/state", "r"));
-    CHK(fscanf(f, "state:%*[\t ]%" STRINGIFY(sizeof(str_state))  "s", str_state), != 1);
-    CHK_NEG(fclose(f));
-
-    if ( strcasecmp(str_state, STRINGIFY(OPEN)) == 0 ) {
-        *state = OPEN;
-        return true;
-    } else if ( strcasecmp(str_state, STRINGIFY(CLOSED)) == 0 ) {
-        *state = CLOSED;
-        return true;
-    } else {
-        return false;
-    }
-
-    fail:
-    SAFE_FREE(fclose, f);
-    return false;
-}
-#endif
