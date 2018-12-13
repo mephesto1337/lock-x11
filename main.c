@@ -52,7 +52,7 @@ int main(int argc, char *const argv[], char *const envp[]) {
             CHK_FALSE(lock_screen());
         } else {
             debug("info->idle = %lu", info->idle);
-            CHK_NEG(usleep(1000000UL));
+            usleep(1000000UL);
         }
     }
     ret = EXIT_SUCCESS;
@@ -114,7 +114,7 @@ fail:
 bool lock_screen(void) { return spawn(lockcmd, environ); }
 
 void sighandler(int signum) {
-    if (signum == SIGINT) {
+    if (signum == SIGUSR1) {
         CHK_FALSE(lock_screen());
     }
 fail:
