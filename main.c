@@ -1,4 +1,5 @@
 #include <X11/extensions/scrnsaver.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,18 +13,20 @@
 #include "desktop-utils/log.h"
 #include "desktop-utils/macros.h"
 
-#define DEFAULT_INACTIVITY "10m"
-
 bool parse_time(const char *str, unsigned long *msecs);
 bool hash_fullscreen_window(Display *dpy);
+bool lock_screen(void);
+void sighandler(int signum);
+char *const *environ = NULL;
 
 int main(int argc, char *const argv[], char *const envp[]) {
     Display *dpy = NULL;
     XScreenSaverInfo *info = NULL;
     unsigned long max_inactivity = 0;
-    ;
+    struct sigaction sa;
     int ret = EXIT_SUCCESS;
 
+    environ = envp;
     if (argc == 2) {
         CHK_FALSE(parse_time(argv[1], &max_inactivity));
     } else {
@@ -31,15 +34,22 @@ int main(int argc, char *const argv[], char *const envp[]) {
     }
     debug("max_inactivity = %lu msecs", max_inactivity);
 
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sighandler;
+    sigemptyset(&sa.sa_mask);
+    sigaddset(&sa.sa_mask, SIGUSR1);
+    sigaddset(&sa.sa_mask, SIGUSR2);
+
     CHK_FALSE(daemonize_uniq(LOCK_FILENAME));
     CHK_NULL(dpy = XOpenDisplay(NULL));
     CHK_NULL(info = XScreenSaverAllocInfo());
+    CHK_NEG(sigaction(SIGUSR1, &sa, NULL));
 
     while (true) {
         CHK_FALSE(XScreenSaverQueryInfo(dpy, DefaultRootWindow(dpy), info));
         debug("info->idle = %lu", info->idle);
         if (info->idle >= max_inactivity) {
-            CHK_NEG(spawn(lockcmd, envp));
+            CHK_FALSE(lock_screen());
         } else {
             debug("info->idle = %lu", info->idle);
             CHK_NEG(usleep(1000000UL));
@@ -99,4 +109,14 @@ bool hash_fullscreen_window(Display *dpy) {
 
 fail:
     return false;
+}
+
+bool lock_screen(void) { return spawn(lockcmd, environ); }
+
+void sighandler(int signum) {
+    if (signum == SIGINT) {
+        CHK_FALSE(lock_screen());
+    }
+fail:
+    return;
 }
